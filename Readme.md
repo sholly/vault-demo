@@ -16,7 +16,7 @@ ensure pods running
 
 exec to vault pod
 
-oc exec -it vault-0 -- /bin/sh
+`oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
 vault auth enable kubernetes
 
@@ -45,7 +45,7 @@ vault kv get secret/webapp/config
 
 Define read policy: 
 
-`oc exec -it vault-0 -- /bin/sh`
+`oc -n vault-instance exec -it vault-0 -- /bin/sh`
 ```
 / $ vault policy write webapp - <<EOF
 path "secret/data/webapp/config" {
@@ -53,8 +53,6 @@ path "secret/data/webapp/config" {
 }
 EOF
 ```
-
-
 
 Create kubernetes authentication role: 
 
@@ -79,7 +77,7 @@ oc exec \
 ```
 
 
-Deploying secrets via annotations: 
+## Deploying secrets via annotations: 
 
 Create and apply a service account: 
 ```
@@ -165,3 +163,13 @@ vault write auth/kubernetes/role/springvaultapp \
 ```
 
 Deploy application: 
+
+`oc apply -f application-springvaultapp.yaml`
+
+Check logs for the init container: 
+
+`oc logs -f springvaultapp-x-xxxxx -c script-vault-adapter`
+
+Check logs for the application: 
+
+`oc logs -f springvaultapp-x-xxxxx`
