@@ -91,7 +91,7 @@ metadata:
 
 exec into vault, create secret/issues/config 
 
-`oc exec -it vault-0 -- /bin/sh`
+`oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
 ```
 vault kv put secret/issues/config username="annotation-user" \
@@ -134,6 +134,9 @@ oc exec \
     --container issues -- cat /vault/secrets/issues-config.txt ; echo
 ```
 
+
+## Deploying secrets via an init container: 
+
 Create and apply a service account: 
 ```
 apiVersion: v1
@@ -141,6 +144,7 @@ kind: ServiceAccount
 metadata:
   name: springvaultapp
 ```
+
 
 vault kv put secret/springvaultapp/config password="password-in-vault"
 
@@ -159,3 +163,5 @@ vault write auth/kubernetes/role/springvaultapp \
     policies=springvaultapp \
     ttl=24h
 ```
+
+Deploy application: 
