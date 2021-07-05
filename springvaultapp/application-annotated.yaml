@@ -1,0 +1,60 @@
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: springvaultann
+  name: springvaultann
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: springvaultann
+---
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: springvaultann
+spec:
+  triggers:
+    -
+      type: ConfigChange
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: 'true'
+        vault.hashicorp.com/role: 'springvaultapp'
+        vault.hashicorp.com/agent-inject-secret-secret-springvaultann.properties: 'secret/data/springvaultapp/config'
+        vault.hashicorp.com/agent-inject-template-secret-springvaultann.properties: |
+          {{- with secret "secret/data/springvaultapp/config" -}}
+          password    {{ .Data.data.password }}
+          {{- end -}}
+      labels:
+        app: springvaultann
+    spec:
+      serviceAccountName: springvaultapp
+      containers:
+        - name: springvaultann
+          image: docker.io/sholly/springvaultapp:0.0.1
+          imagePullPolicy: Always
+          env:
+          - name: "APP_NAME"
+            value: springvaultann
+          - name: "VAULT_USERROLE"
+            value: springvaultapp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+

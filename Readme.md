@@ -1,34 +1,52 @@
-Create a project 
+# Integrating Hashicorp Vault with Openshift
 
-vault-instance
 
-Install vault helm repo, update: 
+Note, this is using a development instance of vault, nothing is stored persistently.  
 
+The vault server instance is create in the 'vault-instance' project. 
+
+The applications will be deployed in the 'vault-demo' project. 
+
+
+## Installing vault
+
+Create the project vault-instance
+
+Install vault helm repo, then update: 
+
+```
 helm repo add hashicorp https://helm.releases.hashicorp.com
-
 helm repo update
+```
 
 
 Dev install of helm: 
+```
 helm install vault hashicorp/vault --set "global.openshift=true" --set "server.dev.enabled=true"
+```
 
-ensure pods running
-
-exec to vault pod
+Start a shell inside vault instance: 
 
 `oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
+Now we'll enable kubernetes auth: 
+
+In vault pod shell: 
+
+```
 vault auth enable kubernetes
 
 vault write auth/kubernetes/config \
     token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
     kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443" \
     kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+```
+
 
 ## Secrets directly from vault
 folder secrets-direct-from-vault
 
-Creaet vault-demo project
+Create vault-demo project
 
 create service account
 apiVersion: v1
@@ -78,6 +96,8 @@ oc exec \
 
 
 ## Deploying secrets via annotations: 
+Operate from folder secrets-via-annotations
+
 
 Create and apply a service account: 
 ```
@@ -133,7 +153,26 @@ oc exec \
 ```
 
 
-## Deploying secrets via an init container: 
+## Getting secrets via an init container: 
+
+Note that for this example, we need an init container.  The images for the application and init container have already been built. 
+
+If, however, you need to build these, do the following: 
+
+### Building application 
+cd to springvaultapp
+
+`./buildimage.sh && ./pushimage.sh`
+
+
+### Building init container image: 
+
+cd vault-initadapter
+
+`./buildpushimage.sh`
+
+Note how to use the init container pattern, we need to create a docker image with a script appropriate for pulling secrets from vault.
+
 
 Create and apply a service account: 
 ```
@@ -143,8 +182,15 @@ metadata:
   name: springvaultapp
 ```
 
+`oc create -f serviceaccount-springvaultapp.yaml`
 
-vault kv put secret/springvaultapp/config password="password-in-vault"
+
+Exec into vault instance: 
+
+``oc -n vault-instance exec -it vault-0 -- /bin/sh`
+
+
+`vault kv put secret/springvaultapp/config password="password-in-vault"`
 
 ```
 vault policy write springvaultapp - <<EOF
@@ -162,9 +208,72 @@ vault write auth/kubernetes/role/springvaultapp \
     ttl=24h
 ```
 
-Deploy application: 
+Let's examine the DeploymentConfig: 
 
-`oc apply -f application-springvaultapp.yaml`
+```yaml
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: springvaultapp
+spec:
+  triggers:
+    -
+      type: ConfigChange
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: springvaultapp
+    spec:
+      serviceAccountName: springvaultapp
+      initContainers:
+      - name: script-vault-adapter
+        image: docker.io/sholly/vault-initadapter:0.0.1
+        imagePullPolicy: Always
+        env:
+        - name: "APP_NAME"
+          value: springvaultapp
+        - name: "VAULT_ADDR"
+          value: "http://vault.vault-instance.svc:8200"
+        - name: "VAULT_USERROLE"
+          value: springvaultapp
+        volumeMounts:
+        - name: secret-volume
+          mountPath: /vault/secrets
+      containers:
+        - name: springvaultapp
+          image: docker.io/sholly/springvaultapp:0.0.1
+          imagePullPolicy: Always
+          env:
+          - name: "APP_NAME"
+            value: springvaultapp
+          - name: "VAULT_USERROLE"
+            value: springvaultapp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+          volumeMounts:
+          - name: secret-volume
+            mountPath: /vault/secrets
+      volumes:
+      - name: secret-volume
+        emptyDir: {}
+```
+
+Deployed applications *MUST* use the serviceaccount configured to talk to vault. 
+
+Deploy the app: 
+
+`oc apply -f springvaultapp/application-springvaultapp.yaml`
 
 Check logs for the init container: 
 
@@ -173,3 +282,64 @@ Check logs for the init container:
 Check logs for the application: 
 
 `oc logs -f springvaultapp-x-xxxxx`
+
+
+## Getting secrets via annotations.  
+
+This method uses annotations in the DeploymentConfig, which will 
+automatically inject a Vault sidecar.  
+
+This example reuses the 'springvaultapp' serviceaccount, as well as the vault data and policy from the
+previous step. 
+
+
+Examine the deploymentconfig: 
+
+```yaml
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: springvaultann
+spec:
+  triggers:
+    -
+      type: ConfigChange
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: 'true'
+        vault.hashicorp.com/role: 'springvaultapp'
+        vault.hashicorp.com/agent-inject-secret-secret-springvaultann.properties: 'secret/data/springvaultapp/config'
+        vault.hashicorp.com/agent-inject-template-secret-springvaultann.properties: |
+          {{- with secret "secret/data/springvaultapp/config" -}}
+          password    {{ .Data.data.password }}
+          {{- end -}}
+      labels:
+        app: springvaultann
+    spec:
+      serviceAccountName: springvaultapp
+      containers:
+        - name: springvaultann
+          image: docker.io/sholly/springvaultapp:0.0.1
+          imagePullPolicy: Always
+          env:
+          - name: "APP_NAME"
+            value: springvaultann
+          - name: "VAULT_USERROLE"
+            value: springvaultapp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+```
+
+

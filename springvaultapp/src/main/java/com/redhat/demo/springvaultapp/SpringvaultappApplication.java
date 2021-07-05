@@ -23,7 +23,7 @@ public class SpringvaultappApplication {
 
     String password;
 
-    @Value("${VAULT_USERROLE:test}")
+    @Value("${APP_NAME:test}")
     String application;
     public static void main(String[] args) {
         SpringApplication.run(SpringvaultappApplication.class, args);

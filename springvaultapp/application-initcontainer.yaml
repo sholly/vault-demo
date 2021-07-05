@@ -46,10 +46,6 @@ spec:
         - name: springvaultapp
           image: docker.io/sholly/springvaultapp:0.0.1
           imagePullPolicy: Always
-#           lifecycle:
-#             postStart:
-#               exec:
-#                 command: ["/bin/sh", "-c", "sleep 30; rm -rf /tmp/springvaultapp.properties"]
           env:
           - name: "APP_NAME"
             value: springvaultapp
