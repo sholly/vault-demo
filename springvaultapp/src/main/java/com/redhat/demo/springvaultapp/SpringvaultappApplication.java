@@ -31,12 +31,12 @@ public class SpringvaultappApplication {
 
     @PostConstruct
     private void postConstruct() {
-        log.info("--------------Loading properties from " + "/tmp/secret-" + application + ".properties");
+        log.info("--------------Loading properties from " + "/vault/secrets/secret-" + application + ".properties");
 
         Properties myProps = new Properties();
 
         try {
-            myProps.load(new FileReader(new File("/tmp/secret-" + application + ".properties" )));
+            myProps.load(new FileReader(new File("/vault/secrets/secret-" + application + ".properties" )));
         } catch (IOException e) {
             e.printStackTrace();
         }

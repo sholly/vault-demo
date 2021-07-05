@@ -26,12 +26,14 @@ curl -s \
     --header "X-Vault-Token: $VAULT_TOKEN" \
     -H "Accept: application/json" \
     --request GET \
-    $VAULT_ADDR/v1/secret/data/${APP_NAME}/config > /tmp/$VAULT_USERROLE.json
+    $VAULT_ADDR/v1/secret/data/${APP_NAME}/config > /vault/secrets//$VAULT_USERROLE.json
 
-cat /tmp/$VAULT_USERROLE.json | jq .data.data > /tmp/secret-${APP_NAME}.json
+cat /vault/secrets/$VAULT_USERROLE.json | jq .data.data > /vault/secrets/secret-${APP_NAME}.json
 
-cat /tmp/secret-${APP_NAME}.json
+cat /vault/secrets/secret-${APP_NAME}.json
 
-./vault kv get secret/${APP_NAME}/config > /tmp/secret-${APP_NAME}.properties
+#mkdir -p /vault/secrets/
 
-cat /tmp/secret-${APP_NAME}.properties
+./vault kv get secret/${APP_NAME}/config > /vault/secrets/secret-${APP_NAME}.properties
+
+cat /vault/secrets/secret-${APP_NAME}.properties
