@@ -31,18 +31,23 @@ public class SpringvaultappApplication {
 
     @PostConstruct
     private void postConstruct() {
-        log.info("--------------Loading properties from " + "/tmp/" + application + ".properties");
+        log.info("--------------Loading properties from " + "/tmp/secret-" + application + ".properties");
 
         Properties myProps = new Properties();
 
         try {
-            myProps.load(new FileReader(new File("/tmp/" + application + ".properties" )));
+            myProps.load(new FileReader(new File("/tmp/secret-" + application + ".properties" )));
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         password = myProps.getProperty("password");
         log.info("The password is: " + password);
+    }
+
+    @RequestMapping(value = "/health", method = RequestMethod.GET)
+    public String health() {
+        return "ok";
     }
 
     @RequestMapping(value = "/secret", method = RequestMethod.GET)

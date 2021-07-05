@@ -1,0 +1,76 @@
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: springvaultapp
+  name: springvaultapp
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: springvaultapp
+---
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: springvaultapp
+spec:
+  triggers:
+    -
+      type: ConfigChange
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: springvaultapp
+    spec:
+      serviceAccountName: springvaultapp
+      initContainers:
+      - name: script-vault-adapter
+        image: docker.io/sholly/vault-initadapter:0.0.1
+        imagePullPolicy: Always
+        env:
+        - name: "APP_NAME"
+          value: springvaultapp
+        - name: "VAULT_ADDR"
+          value: "http://vault.vault-instance.svc:8200"
+        - name: "VAULT_USERROLE"
+          value: springvaultapp
+        volumeMounts:
+        - name: secret-volume
+          mountPath: /tmp
+      containers:
+        - name: springvaultapp
+          image: docker.io/sholly/springvaultapp:0.0.1
+          imagePullPolicy: Always
+#           lifecycle:
+#             postStart:
+#               exec:
+#                 command: ["/bin/sh", "-c", "sleep 30; rm -rf /tmp/springvaultapp.properties"]
+          env:
+          - name: "APP_NAME"
+            value: springvaultapp
+          - name: "VAULT_USERROLE"
+            value: springvaultapp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 3
+          volumeMounts:
+          - name: secret-volume
+            mountPath: /tmp
+      volumes:
+      - name: secret-volume
+        emptyDir: {}
+

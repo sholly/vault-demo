@@ -133,3 +133,29 @@ oc exec \
     $(oc get pod -l app=issues -o jsonpath="{.items[0].metadata.name}") \
     --container issues -- cat /vault/secrets/issues-config.txt ; echo
 ```
+
+Create and apply a service account: 
+```
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: springvaultapp
+```
+
+vault kv put secret/springvaultapp/config password="password-in-vault"
+
+```
+vault policy write springvaultapp - <<EOF
+path "secret/data/springvaultapp/config" {
+  capabilities = ["read"]
+}
+EOF
+```
+
+```
+vault write auth/kubernetes/role/springvaultapp \
+    bound_service_account_names=springvaultapp \
+    bound_service_account_namespaces=vault-demo \
+    policies=springvaultapp \
+    ttl=24h
+```

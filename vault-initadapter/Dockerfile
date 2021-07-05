@@ -21,6 +21,8 @@ RUN wget https://releases.hashicorp.com/vault/1.7.2/vault_1.7.2_linux_amd64.zip 
 
 ADD getsecrets.sh /vault
 
+RUN chmod a+x /vault/getsecrets.sh
+
 USER vault
 
 CMD ["./getsecrets.sh"]

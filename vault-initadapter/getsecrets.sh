@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
+set -x 
 
 echo VAULT_ADDR = $VAULT_ADDR
 echo VAULT_USERROLE = $VAULT_USERROLE
-echo SPRING_PROFILES_ACTIVE = $SPRING_PROFILES_ACTIVE
 echo APP_NAME = $APP_NAME
-echo APP_DOMAIN = $APP_DOMAIN
 
 JWT=`cat /var/run/secrets/kubernetes.io/serviceaccount/token`
 
@@ -27,12 +26,12 @@ curl -s \
     --header "X-Vault-Token: $VAULT_TOKEN" \
     -H "Accept: application/json" \
     --request GET \
-    $VAULT_ADDR/v1/${APP_DOMAIN}/data/${APP_NAME}/${SPRING_PROFILES_ACTIVE} > /tmp/$VAULT_USERROLE.json
+    $VAULT_ADDR/v1/secret/data/${APP_NAME}/config > /tmp/$VAULT_USERROLE.json
 
-cat /tmp/$VAULT_USERROLE.json | jq .data.data > /tmp/${APP_DOMAIN}-${APP_NAME}-${SPRING_PROFILES_ACTIVE}.json
+cat /tmp/$VAULT_USERROLE.json | jq .data.data > /tmp/secret-${APP_NAME}.json
 
-cat /tmp/${APP_DOMAIN}-${APP_NAME}-${SPRING_PROFILES_ACTIVE}.json
+cat /tmp/secret-${APP_NAME}.json
 
-./vault kv get ${APP_DOMAIN}/${APP_NAME}/${SPRING_PROFILES_ACTIVE} > /tmp/${APP_DOMAIN}-${APP_NAME}-${SPRING_PROFILES_ACTIVE}.txt
+./vault kv get secret/${APP_NAME}/config > /tmp/secret-${APP_NAME}.properties
 
-cat /tmp/${APP_DOMAIN}-${APP_NAME}-${SPRING_PROFILES_ACTIVE}.txt
+cat /tmp/secret-${APP_NAME}.properties
