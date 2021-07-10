@@ -48,11 +48,14 @@ folder secrets-direct-from-vault
 
 Create vault-demo project
 
-create service account
+create service account: 
+
+```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: webapp
+```
 
 oc create -f serviceaccount-webapp.yaml
 
@@ -187,10 +190,13 @@ metadata:
 
 Exec into vault instance: 
 
-``oc -n vault-instance exec -it vault-0 -- /bin/sh`
+`oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
+Create the secret: 
 
 `vault kv put secret/springvaultapp/config password="password-in-vault"`
+
+Create a vault policy to allow the springvaultapp secret to be read: 
 
 ```
 vault policy write springvaultapp - <<EOF
@@ -273,7 +279,7 @@ Deployed applications *MUST* use the serviceaccount configured to talk to vault.
 
 Deploy the app: 
 
-`oc apply -f springvaultapp/application-springvaultapp.yaml`
+`oc apply -f springvaultapp/application-initcontainer.yaml`
 
 Check logs for the init container: 
 
