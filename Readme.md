@@ -46,9 +46,9 @@ vault write auth/kubernetes/config \
 ## Secrets directly from vault
 folder secrets-direct-from-vault
 
-Create vault-demo project
+Create the project 'vault-demo'
 
-create service account: 
+create a service account for the application: 
 
 ```yaml
 apiVersion: v1
@@ -60,9 +60,16 @@ metadata:
 oc create -f serviceaccount-webapp.yaml
 
 Add webapp password: 
-oc -n vault-instance exec -it vault-0 -- /bin/sh
+
+Start a shell in the vault instance: 
+`oc -n vault-instance exec -it vault-0 -- /bin/sh`
+
+Create and check the secret: 
+
+```shell
 vault kv put secret/webapp/config username="static-user" password="static-password"
 vault kv get secret/webapp/config
+```
 
 Define read policy: 
 
