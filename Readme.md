@@ -72,7 +72,7 @@ vault kv put secret/webapp/config username="static-user" password="static-passwo
 vault kv get secret/webapp/config
 ```
 
-Define read policy: 
+Define the policy allowing the secret to be read: 
 
 `oc -n vault-instance exec -it vault-0 -- /bin/sh`
 ```
@@ -83,7 +83,7 @@ path "secret/data/webapp/config" {
 EOF
 ```
 
-Create kubernetes authentication role: 
+Create kubernetes authentication role.  This ties the application service account with the policy used to read the secret: 
 
 ```
 vault write auth/kubernetes/role/webapp \
@@ -93,7 +93,7 @@ vault write auth/kubernetes/role/webapp \
     ttl=24h
 ```
 
-deploy webapp 
+deploy the webapp 
 
 `oc apply -f secrets-direct-from-vault`
 
