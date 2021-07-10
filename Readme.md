@@ -57,11 +57,12 @@ metadata:
   name: webapp
 ```
 
-oc create -f serviceaccount-webapp.yaml
+`oc create -f serviceaccount-webapp.yaml`
 
 Add webapp password: 
 
 Start a shell in the vault instance: 
+
 `oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
 Create and check the secret: 
