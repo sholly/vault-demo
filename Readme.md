@@ -20,18 +20,18 @@ helm repo update
 ```
 
 
-Dev install of helm: 
+Install the development version of helm:
 ```
 helm install vault hashicorp/vault --set "global.openshift=true" --set "server.dev.enabled=true"
 ```
 
-Start a shell inside vault instance: 
+Start a shell inside the vault instance: 
 
 `oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
 Now we'll enable kubernetes auth: 
 
-In vault pod shell: 
+`oc -n vault-instance exec -it vault-0 -- /bin/sh`
 
 ```
 vault auth enable kubernetes
@@ -83,7 +83,7 @@ path "secret/data/webapp/config" {
 EOF
 ```
 
-Create kubernetes authentication role.  This ties the application service account with the policy used to read the secret: 
+Create the kubernetes authentication role.  This ties the application service account with the policy used to read the secret: 
 
 ```
 vault write auth/kubernetes/role/webapp \
@@ -93,7 +93,7 @@ vault write auth/kubernetes/role/webapp \
     ttl=24h
 ```
 
-deploy the webapp 
+Deploy the webapp 
 
 `oc apply -f secrets-direct-from-vault`
 
@@ -152,11 +152,11 @@ vault write auth/kubernetes/role/issues \
     ttl=24h
 ```
 
-deploy app
+Deploy the issues application: 
 
-oc create -f deployment-issues.yaml
+`oc create -f deployment-issues.yaml`
 
-Verify vault: 
+Verify that the secret was deployed to the issues application: 
 ```
 oc exec \
     $(oc get pod -l app=issues -o jsonpath="{.items[0].metadata.name}") \
@@ -170,20 +170,21 @@ Note that for this example, we need an init container.  The images for the appli
 
 If, however, you need to build these, do the following: 
 
-### Building application 
+### Building the Java application 
 cd to springvaultapp
 
 `./buildimage.sh && ./pushimage.sh`
 
 
 ### Building init container image: 
+Note that to use the init container pattern, we need to create a docker image with a script that will pull secrets from vault.
 
 cd vault-initadapter
 
 `./buildpushimage.sh`
 
-Note how to use the init container pattern, we need to create a docker image with a script appropriate for pulling secrets from vault.
 
+### Deploying the initContainer-enabled Spring Boot application
 
 Create and apply a service account: 
 ```
@@ -285,9 +286,12 @@ spec:
 
 Deployed applications *MUST* use the serviceaccount configured to talk to vault. 
 
-Deploy the app: 
+Deploy the application: 
 
 `oc apply -f springvaultapp/application-initcontainer.yaml`
+
+If the secret is read properly, the init container logs will show the secret getting written.  The application logs
+will show the application reading the secret.  
 
 Check logs for the init container: 
 
@@ -298,7 +302,7 @@ Check logs for the application:
 `oc logs -f springvaultapp-x-xxxxx`
 
 
-## Getting secrets via annotations.  
+## Injecting secrets via annotations.  
 
 This method uses annotations in the DeploymentConfig, which will 
 automatically inject a Vault sidecar.  
@@ -356,4 +360,8 @@ spec:
             periodSeconds: 3
 ```
 
+Deploy the application: 
 
+`oc apply -f springvaultapp/application-annotated.yaml`
+
+Once again, we can check the logs to make sure the secret was read successfully.  Note that now we should have not only init container logs, but the Vault sidecar will log that it is writing secrets.  We can also check the application logs to verify that the secret was read successfully.  
